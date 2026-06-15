@@ -47,6 +47,14 @@ build/Release
 # Dependency directories
 node_modules/
 
+# Next.js build output — never commit this, Vercel builds it fresh
+.next/
+out/
+
+# Local environment variables — never commit secrets
+.env.local
+.env.*.local
+
 # Optional npm cache directory
 .npm
 
