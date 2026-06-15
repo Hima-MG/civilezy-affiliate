@@ -95,7 +95,7 @@ export function generateEmailHtml(data: EmailData): string {
 
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 ${section("📚", "Courses", courseRows)}
-                ${section("🎁", "Bundles", bundleRows)}
+                ${section("🎁", "1 year E-Book Bundles", bundleRows)}
                 ${section("📖", "E-Books", ebookRows)}
               </table>
 
