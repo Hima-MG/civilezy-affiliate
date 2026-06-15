@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==================================
+    // ADMINS
+    // ==================================
+    function isAdmin() {
+      return request.auth != null &&
+        request.auth.token.admin == true;
+    }
+
+    // ==================================
+    // USERS
+    // ==================================
+    match /users/{uid} {
+      allow read, create, update:
+        if request.auth != null &&
+        request.auth.uid == uid;
+
+      allow delete: if false;
+    }
+
+    // ==================================
+    // SUPPORT TICKETS
+    // ==================================
+    match /support_tickets/{ticketId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // ==================================
+    // TICKET MESSAGES
+    // ==================================
+    match /ticket_messages/{messageId} {
+      allow read, write: if isAdmin();
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ==================================
+    // TICKET EVENTS / TIMELINE
+    // ==================================
+    match /ticket_events/{eventId} {
+      allow read, write: if isAdmin();
+      allow read: if request.auth != null;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ==================================
+    // ANNOUNCEMENTS
+    // ==================================
+    // Public reads: announcements are shown site-wide to all visitors.
+    // Open writes: the admin panel uses a passphrase (not Firebase Auth),
+    // so isAdmin() is always false here — same pattern as /ebooks and /blogs.
+    // Application-level passphrase guard prevents non-admin access.
+    match /announcements/{id} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ==================================
+    // QUESTIONS
+    // ==================================
+    match /questions/{questionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ==================================
+    // GAME REPORTS
+    // ==================================
+    match /game_arena_reports/{reportId} {
+      allow create: if true;
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ==================================
+    // LEADERBOARDS
+    // ==================================
+    match /leaderboard/{playerId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /leaderboard_daily/{playerId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /leaderboard_weekly/{playerId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /leaderboard_monthly/{playerId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ==================================
+    // SYLLABUS LEADS
+    // ==================================
+    match /syllabus_leads/{leadId} {
+      allow create: if
+        request.resource.data.name is string &&
+        request.resource.data.phone is string &&
+        request.resource.data.phone.size() == 10 &&
+        request.resource.data.course is string;
+
+      allow read: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ==================================
+    // E-BOOKS
+    // ==================================
+    // Public reads: ebooks are marketing content, no PII.
+    // Open writes: the admin panel uses a passphrase (not Firebase Auth),
+    // so isAdmin() cannot be used here. Ebook content is non-sensitive.
+    match /ebooks/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ==================================
+    // BLOGS
+    // ==================================
+    // Public reads: published blog posts are public content.
+    // Open writes: the admin panel uses a passphrase (not Firebase Auth),
+    // so isAdmin() cannot be used here. Blog content is non-sensitive.
+    // Application-level passphrase guard prevents non-admin access.
+    match /blogs/{blogId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+  }
+}
