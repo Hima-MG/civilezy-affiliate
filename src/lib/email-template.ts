@@ -147,7 +147,7 @@ export function generateEmailText(data: EmailData): string {
   }
 
   lines.push("================================");
-  lines.push("🎁 BUNDLES");
+  lines.push("🎁 1 year E-Book Bundles");
   lines.push("================================");
 
   for (const p of bundles) {
