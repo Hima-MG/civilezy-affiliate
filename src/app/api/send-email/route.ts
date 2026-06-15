@@ -4,8 +4,7 @@ import { verifyAdmin } from "@/lib/api-auth";
 import { validateEmail } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Email providers — configure via environment variables.
-// See .env.local.example for the full list of required keys.
+// Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function sendViaResend(
@@ -14,17 +13,22 @@ async function sendViaResend(
   html: string,
   text: string
 ): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY environment variable is not set.");
+
+  const from = process.env.EMAIL_FROM;
+  if (!from) throw new Error("EMAIL_FROM environment variable is not set.");
+
   const { Resend } = await import("resend");
-  const resend = new Resend(process.env.RESEND_API_KEY!);
-  const result = await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "no-reply@civilezy.in",
-    to,
-    subject,
-    html,
-    text,
-  });
+  const resend = new Resend(apiKey);
+
+  const result = await resend.emails.send({ from, to, subject, html, text });
+
   if (result.error) {
-    throw new Error(`Resend error: ${result.error.message}`);
+    // Resend returns structured errors — expose the full message for diagnosis
+    throw new Error(
+      `Resend API error: ${result.error.message ?? JSON.stringify(result.error)}`
+    );
   }
 }
 
@@ -34,30 +38,30 @@ async function sendViaSMTP(
   html: string,
   text: string
 ): Promise<void> {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.EMAIL_FROM;
+
+  if (!host) throw new Error("SMTP_HOST environment variable is not set.");
+  if (!from) throw new Error("EMAIL_FROM environment variable is not set.");
+
   const nodemailer = await import("nodemailer");
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host,
     port: Number(process.env.SMTP_PORT ?? 587),
     secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
+    auth: user && pass ? { user, pass } : undefined,
   });
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM ?? "no-reply@civilezy.in",
-    to,
-    subject,
-    html,
-    text,
-  });
+
+  await transporter.sendMail({ from, to, subject, html, text });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/send-email
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  // ── Authentication ───────────────────────────────────────────────────────
+  // ── Authentication ──────────────────────────────────────────────────────────
   const uid = await verifyAdmin(req);
   if (!uid) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -71,16 +75,15 @@ export async function POST(req: NextRequest) {
       refId?: string;
     };
 
-    // ── Field presence validation ──────────────────────────────────────────
+    // ── Field validation ────────────────────────────────────────────────────
     if (!affiliateName?.trim() || !affiliateEmail?.trim() || !refId?.trim()) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
-
-    // ── Email format validation (server-side) ──────────────────────────────
     if (!validateEmail(affiliateEmail)) {
       return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
     }
 
+    // ── Build email content ─────────────────────────────────────────────────
     const subject = "Welcome to Civilezy Affiliate Program";
     const html = generateEmailHtml({
       affiliateName: affiliateName.trim(),
@@ -93,7 +96,7 @@ export async function POST(req: NextRequest) {
       refId: refId.trim(),
     });
 
-    // ── Provider selection ─────────────────────────────────────────────────
+    // ── Dispatch ────────────────────────────────────────────────────────────
     if (process.env.RESEND_API_KEY) {
       await sendViaResend(affiliateEmail.trim(), subject, html, text);
     } else if (process.env.SMTP_HOST) {
@@ -102,7 +105,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "No email provider configured. Set RESEND_API_KEY or SMTP_* environment variables.",
+            "No email provider configured. " +
+            "Add RESEND_API_KEY (and EMAIL_FROM) to your Vercel environment variables.",
         },
         { status: 500 }
       );
@@ -110,10 +114,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    // Log the full error server-side and surface a descriptive message to the
-    // client so the admin sees the real reason instead of a generic failure.
+    // Surface the real error to both the server logs and the client toast
+    // so misconfiguration is immediately visible without reading Vercel logs.
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[send-email]", message);
+    console.error("[send-email ERROR]", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
