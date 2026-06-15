@@ -110,7 +110,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[send-email]", err);
-    return NextResponse.json({ error: "Failed to send email." }, { status: 500 });
+    // Log the full error server-side and surface a descriptive message to the
+    // client so the admin sees the real reason instead of a generic failure.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[send-email]", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
