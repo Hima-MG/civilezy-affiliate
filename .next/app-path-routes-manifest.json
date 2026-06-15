@@ -1,0 +1,7 @@
+{
+  "/api/send-email/route": "/api/send-email",
+  "/_not-found/page": "/_not-found",
+  "/api/affiliates/route": "/api/affiliates",
+  "/login/page": "/login",
+  "/page": "/"
+}
