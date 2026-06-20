@@ -137,15 +137,21 @@ export const COUPON_COUNT = PRODUCTS.filter((p) => p.defaultCoupon).length;
 // No manual string concatenation; no double `&`; no malformed query strings.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Global referral coupon applied to all Membership Courses and E-Books. */
+export const REFERRAL_COUPON = "REFER10";
+
 /**
  * Builds the affiliate checkout URL for one product + refId.
- * Appends `coupon` (if configured) and `ref_id` via URLSearchParams so all
- * values are properly encoded and the resulting URL is never malformed.
+ * - Bundles: always use their own `defaultCoupon` (50% public discount).
+ * - Courses / E-Books: always use REFERRAL_COUPON (10% OFF).
+ * All params appended via URLSearchParams — no manual string concatenation.
  */
 export function generateAffiliateUrl(product: Product, refId: string): string {
   const url = new URL(product.purchaseUrl);
-  if (product.defaultCoupon) {
-    url.searchParams.set("coupon", product.defaultCoupon);
+  if (product.category === "bundle") {
+    if (product.defaultCoupon) url.searchParams.set("coupon", product.defaultCoupon);
+  } else {
+    url.searchParams.set("coupon", REFERRAL_COUPON);
   }
   url.searchParams.set("ref_id", refId);
   return url.toString();

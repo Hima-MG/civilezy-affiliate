@@ -85,16 +85,13 @@ export async function POST(req: NextRequest) {
 
     // ── Build email content ─────────────────────────────────────────────────
     const subject = "Welcome to Civilezy Affiliate Program";
-    const html = generateEmailHtml({
+    const emailData = {
       affiliateName: affiliateName.trim(),
       affiliateEmail: affiliateEmail.trim(),
       refId: refId.trim(),
-    });
-    const text = generateEmailText({
-      affiliateName: affiliateName.trim(),
-      affiliateEmail: affiliateEmail.trim(),
-      refId: refId.trim(),
-    });
+    };
+    const html = generateEmailHtml(emailData);
+    const text = generateEmailText(emailData);
 
     // ── Dispatch ────────────────────────────────────────────────────────────
     if (process.env.RESEND_API_KEY) {

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import {
   extractRefId,
   PRODUCTS,
+  REFERRAL_COUPON,
   generateAffiliateUrl,
   groupByCategory,
   Product,
@@ -37,14 +38,17 @@ function LinkRow({ item }: { item: GeneratedLink }) {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  const displayCoupon =
+    item.product.category === "bundle" ? item.product.defaultCoupon : REFERRAL_COUPON;
+
   return (
     <div className="py-3 border-b border-slate-100 last:border-0">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-800">{item.product.title}</p>
-          {item.product.defaultCoupon && (
+          {displayCoupon && (
             <span className="inline-block mt-0.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
-              🏷️ Coupon: {item.product.defaultCoupon}
+              🏷️ Coupon: {displayCoupon}
             </span>
           )}
           <p className="mt-1 text-xs text-blue-600 break-all leading-relaxed">{item.url}</p>
@@ -244,18 +248,23 @@ export default function AddAffiliateModal({ onClose, onSuccess }: Props) {
     const { courses, bundles, ebooks } = groupByCategory(PRODUCTS);
     const lines: string[] = [];
 
+    lines.push(`🎉 EXCLUSIVE REFERRAL OFFER — Coupon: ${REFERRAL_COUPON} (10% OFF on Courses & E-Books)`);
+    lines.push("─".repeat(44));
+    lines.push("");
+
     lines.push("📚 COURSES");
     lines.push("─".repeat(44));
     for (const p of courses) {
       const link = generatedLinks.find((l) => l.product.id === p.id);
       if (link) {
         lines.push(p.title);
+        lines.push(`Coupon: ${REFERRAL_COUPON}`);
         lines.push(link.url);
         lines.push("");
       }
     }
 
-    lines.push("🎁 BUNDLES");
+    lines.push("🎁 BUNDLES (50% OFF)");
     lines.push("─".repeat(44));
     for (const p of bundles) {
       const link = generatedLinks.find((l) => l.product.id === p.id);
@@ -273,6 +282,7 @@ export default function AddAffiliateModal({ onClose, onSuccess }: Props) {
       const link = generatedLinks.find((l) => l.product.id === p.id);
       if (link) {
         lines.push(p.title);
+        lines.push(`Coupon: ${REFERRAL_COUPON}`);
         lines.push(link.url);
         lines.push("");
       }

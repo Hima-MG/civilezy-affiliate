@@ -1,4 +1,4 @@
-import { PRODUCTS, generateAffiliateUrl, groupByCategory, Product } from "./products";
+import { PRODUCTS, REFERRAL_COUPON, generateAffiliateUrl, groupByCategory, Product } from "./products";
 import { escapeHtml } from "./utils";
 
 export interface EmailData {
@@ -13,14 +13,15 @@ export interface EmailData {
  */
 function renderProductRow(product: Product, refId: string): string {
   const url = generateAffiliateUrl(product, refId);
-  // Escape the URL for use inside HTML attributes and text content.
-  // generateAffiliateUrl uses the URL API so special chars are already
-  // percent-encoded in the path/params — escapeHtml handles & → &amp; in attrs.
   const safeUrl = escapeHtml(url);
   const safeTitle = escapeHtml(product.title);
 
-  const couponLine = product.defaultCoupon
-    ? `<p style="margin:2px 0 6px; color:#d97706; font-size:13px; font-weight:600;">&#127991; Coupon: ${escapeHtml(product.defaultCoupon)}</p>`
+  // Bundles show their own 50% coupon; courses/ebooks show REFERRAL_COUPON.
+  const displayCoupon =
+    product.category === "bundle" ? product.defaultCoupon : REFERRAL_COUPON;
+
+  const couponLine = displayCoupon
+    ? `<p style="margin:2px 0 6px; color:#d97706; font-size:13px; font-weight:600;">&#127991; Coupon: ${escapeHtml(displayCoupon)}</p>`
     : "";
 
   return `
@@ -51,9 +52,8 @@ function section(emoji: string, title: string, rows: string): string {
 
 export function generateEmailHtml(data: EmailData): string {
   const { affiliateName, refId } = data;
-  // Escape the affiliate name — it is user-supplied and must never be
-  // inserted raw into HTML to prevent injection via the email template.
   const safeName = escapeHtml(affiliateName.trim());
+  const safeCoupon = escapeHtml(REFERRAL_COUPON);
 
   const { courses, bundles, ebooks } = groupByCategory(PRODUCTS);
 
@@ -83,19 +83,50 @@ export function generateEmailHtml(data: EmailData): string {
             </td>
           </tr>
 
-          <!-- Body -->
+          <!-- Greeting -->
           <tr>
-            <td style="padding:32px 40px;">
+            <td style="padding:32px 40px 20px;">
               <p style="margin:0 0 16px;color:#374151;font-size:15px;">Hi <strong>${safeName}</strong>,</p>
-              <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
+              <p style="margin:0;color:#374151;font-size:15px;line-height:1.6;">
                 Welcome to the <strong>Civilezy Affiliate Program</strong>! We&apos;re excited to have you on board.
                 Below are your personalised affiliate links for all our products.
                 Share them with your audience to start earning commissions on every successful enrollment.
               </p>
+            </td>
+          </tr>
 
+          <!-- Referral Coupon Banner -->
+          <tr>
+            <td style="padding:0 40px 0;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border-radius:10px;border:1.5px solid #f59e0b;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#92400e;">&#127881; Exclusive Referral Offer</p>
+                    <p style="margin:0 0 12px;font-size:12px;color:#a16207;">Your audience gets 10% OFF on all Membership Courses and Quick Revision E-Books.</p>
+                    <p style="margin:0 0 2px;font-size:12px;color:#a16207;font-weight:600;">Use Coupon Code:</p>
+                    <p style="margin:0 0 12px;display:inline-block;font-size:22px;font-weight:800;letter-spacing:3px;color:#78350f;background:#ffffff;border:2px dashed #f59e0b;border-radius:6px;padding:8px 20px;">${safeCoupon}</p>
+                    <p style="margin:0;font-size:11px;color:#a16207;">
+                      &#10003; ITI Membership &nbsp;
+                      &#10003; Diploma Membership &nbsp;
+                      &#10003; B.Tech Membership &nbsp;
+                      &#10003; Surveyor Membership<br/>
+                      &#10003; All Quick Revision E-Books
+                    </p>
+                    <p style="margin:8px 0 0;font-size:11px;color:#b45309;font-style:italic;">
+                      Note: Our Bundle Courses already include 50% OFF and use their own coupon codes.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Product sections -->
+          <tr>
+            <td style="padding:0 40px 32px;">
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 ${section("📚", "Courses", courseRows)}
-                ${section("🎁", "1 year E-Book Bundles", bundleRows)}
+                ${section("🎁", "Bundles (50% OFF)", bundleRows)}
                 ${section("📖", "E-Books", ebookRows)}
               </table>
 
@@ -133,7 +164,20 @@ export function generateEmailText(data: EmailData): string {
     "",
     "Welcome to the Civilezy Affiliate Program.",
     "",
-    "Below are your affiliate links.",
+    "================================",
+    "🎉 EXCLUSIVE REFERRAL OFFER",
+    "================================",
+    `Coupon Code: ${REFERRAL_COUPON}`,
+    "",
+    "Applicable On:",
+    "  ✓ ITI Membership",
+    "  ✓ Diploma Membership",
+    "  ✓ B.Tech Membership",
+    "  ✓ Surveyor Membership",
+    "  ✓ All Quick Revision E-Books",
+    "",
+    "Note: Our Bundle Courses already include 50% OFF and use their own coupon codes.",
+    "================================",
     "",
     "================================",
     "📚 COURSES",
@@ -142,12 +186,13 @@ export function generateEmailText(data: EmailData): string {
 
   for (const p of courses) {
     lines.push(p.title);
+    lines.push(`Coupon: ${REFERRAL_COUPON}`);
     lines.push(generateAffiliateUrl(p, refId));
     lines.push("");
   }
 
   lines.push("================================");
-  lines.push("🎁 1 year E-Book Bundles");
+  lines.push("🎁 BUNDLES (50% OFF)");
   lines.push("================================");
 
   for (const p of bundles) {
@@ -163,6 +208,7 @@ export function generateEmailText(data: EmailData): string {
 
   for (const p of ebooks) {
     lines.push(p.title);
+    lines.push(`Coupon: ${REFERRAL_COUPON}`);
     lines.push(generateAffiliateUrl(p, refId));
     lines.push("");
   }
